@@ -148,7 +148,7 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
         with:
-          cosign-release: 'v2.6.1'
+          cosign-release: "v2.6.1"
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
 
       - name: Sign container image
@@ -170,4 +170,22 @@ jobs:
         with:
           token: ${{ secrets.PAT }}
           repository: frostyard/debian-bootc-gnome
+          event-type: build
+
+      - name: Kickoff snowdrift
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        continue-on-error: true
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.PAT }}
+          repository: frostyard/snowdrift
+          event-type: build
+
+      - name: Kickoff cayo
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        continue-on-error: true
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.PAT }}
+          repository: frostyard/cayo
           event-type: build
