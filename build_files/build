@@ -16,6 +16,7 @@ apt install -y \
   iputils-ping \
   linux-image-generic \
   network-manager \
+  rsync \
   skopeo \
   sudo \
   tpm2-tools \
