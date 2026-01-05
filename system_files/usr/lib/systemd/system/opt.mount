@@ -1,6 +1,7 @@
 [Unit]
 DefaultDependencies=no
 Before=local-fs.target sysinit.target
+After=var.mount
 
 [Mount]
 What=/var/opt
