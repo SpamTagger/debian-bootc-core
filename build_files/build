@@ -43,6 +43,7 @@ systemctl enable srv.mount
 systemctl enable mnt.mount
 systemctl enable media.mount
 systemctl enable opt.mount
+systemctl enable usr-local.mount
 
 # Fix permissions on sudoers.d
 chmod 440 /etc/sudoers.d/001-bootc

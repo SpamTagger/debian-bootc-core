@@ -4,8 +4,8 @@ Before=local-fs.target sysinit.target
 After=var.mount
 
 [Mount]
-What=/var/home
-Where=/home
+What=/var/usrlocal
+Where=/usr/local
 Options=bind
 
 [Install]
