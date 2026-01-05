@@ -1,0 +1,11 @@
+[Unit]
+DefaultDependencies=no
+Before=local-fs.target sysinit.target
+
+[Mount]
+What=/var/usrlocal
+Where=/usr/local
+Options=bind
+
+[Install]
+WantedBy=local-fs.target
