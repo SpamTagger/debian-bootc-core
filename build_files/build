@@ -35,7 +35,7 @@ apt install -y \
 curl -fsSL https://frostyard.github.io/plow/public.key | gpg --dearmor -o /usr/share/keyrings/frostyard.gpg
 echo "deb [signed-by=/usr/share/keyrings/frostyard.gpg] https://frostyard.github.io/plow stable main" > /etc/apt/sources.list.d/frostyard.list
 apt update -y
-apt install -y nbc
+apt install -y frostyard-nbc
 
 # Use proper home directory for new users
 sed -i 's|.*HOME=/home|HOME=/var/home|' "/etc/default/useradd"
