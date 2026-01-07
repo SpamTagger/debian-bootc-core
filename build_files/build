@@ -2,6 +2,8 @@
 
 set -ouex pipefail
 
+apt update -y
+
 # Required packages
 apt install -y \
   btrfs-progs \
@@ -12,6 +14,7 @@ apt install -y \
   e2fsprogs \
   fdisk \
   firmware-linux-free \
+  gpg \
   iproute2 \
   iputils-ping \
   linux-image-generic \
@@ -28,10 +31,11 @@ apt install -y \
   libtss2-esys-3.0.2-0 \
   libp11-kit0
 
-# TODO: install the latest release by querying releases or using repo when appropriate
-curl --fail --retry 5 --retry-all-errors -sSL -o /tmp/nbc.deb \
-    https://github.com/frostyard/nbc/releases/download/dev/nbc_1.0.0.dev_amd64.deb
-apt install -y /tmp/nbc.deb
+# add frostyard's plow repo
+curl -fsSL https://frostyard.github.io/plow/public.key | gpg --dearmor -o /usr/share/keyrings/frostyard.gpg
+echo "deb [signed-by=/usr/share/keyrings/frostyard.gpg] https://frostyard.github.io/plow stable main" > /etc/apt/sources.list.d/frostyard.list
+apt update -y
+apt install -y nbc
 
 # Use proper home directory for new users
 sed -i 's|.*HOME=/home|HOME=/var/home|' "/etc/default/useradd"
