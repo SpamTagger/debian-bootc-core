@@ -12,6 +12,8 @@ apt install -y \
   e2fsprogs \
   fdisk \
   firmware-linux-free \
+  git \
+  git-lfs \
   iproute2 \
   iputils-ping \
   linux-image-generic \
