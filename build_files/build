@@ -14,6 +14,7 @@ apt install -y \
   e2fsprogs \
   fdisk \
   firmware-linux-free \
+  gdisk \
   git \
   git-lfs \
   gpg \
@@ -21,6 +22,7 @@ apt install -y \
   iputils-ping \
   linux-image-generic \
   network-manager \
+  parted \
   rsync \
   skopeo \
   sudo \
@@ -33,11 +35,11 @@ apt install -y \
   libtss2-esys-3.0.2-0 \
   libp11-kit0
 
-# add frostyard's plow repo
-curl -fsSL https://frostyard.github.io/plow/public.key | gpg --dearmor -o /usr/share/keyrings/frostyard.gpg
-echo "deb [signed-by=/usr/share/keyrings/frostyard.gpg] https://frostyard.github.io/plow stable main" > /etc/apt/sources.list.d/frostyard.list
+# add frostyard's repo
+curl -fsSL https://repository.frostyard.org/public.key | gpg --dearmor -o /usr/share/keyrings/frostyard.gpg
+echo "deb [signed-by=/usr/share/keyrings/frostyard.gpg] https://repository.frostyard.org/ stable main" > /etc/apt/sources.list.d/frostyard.list
 apt update -y
-apt install -y frostyard-nbc
+apt install -y frostyard-nbc frostyard-updex
 
 # Use proper home directory for new users
 sed -i 's|.*HOME=/home|HOME=/var/home|' "/etc/default/useradd"
