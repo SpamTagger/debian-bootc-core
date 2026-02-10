@@ -18,8 +18,8 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/install-bootloader && \
     /ctx/install-bootc && \
     /ctx/build && \
-    /ctx/shared/build-initramfs && \
-    /ctx/shared/finalize
+    /ctx/build-initramfs && \
+    /ctx/finalize
 
 # DEBUGGING
 # RUN apt update -y && apt install -y whois
