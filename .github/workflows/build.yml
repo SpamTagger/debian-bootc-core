@@ -38,6 +38,9 @@ jobs:
         include:
           - version: trixie
           - version: forky
+    container:
+      image: "ghcr.io/ublue-os/devcontainer:latest"
+      options: "--privileged --volume /var/lib/containers:/var/lib/containers --security-opt seccomp=unconfined --security-opt label=disable --user 0:0"
 
     permissions:
       contents: read
