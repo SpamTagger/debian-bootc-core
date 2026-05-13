@@ -4,14 +4,38 @@ image_name := env("BUILD_IMAGE_NAME", "debian-bootc-core")
 image_repo := env("BUILD_IMAGE_REPO", "ghcr.io/spamtagger")
 image_tag := env("BUILD_IMAGE_TAG", "latest")
 base_dir := env("BUILD_BASE_DIR", ".")
+debian_ver := env("DEBIAN_VER", "trixie")
+stable := "trixie"
+testing := "forky"
 filesystem := env("BUILD_FILESYSTEM", "ext4")
 selinux := path_exists('/sys/fs/selinux')
 
 default:
     just --list --unsorted
 
+alias build := build-container
 build-container $image_name=image_name:
-    sudo podman build -t "{{ image_name }}:{{ image_tag }}" .
+    #!/usr/bin/env bash
+    ARCH=$(arch)
+    [[ "$ARCH" == "aarch64" ]] && ARCH=arm64
+    [[ "$ARCH" == "armv7l" ]] && ARCH=armhf
+    [[ "$ARCH" == "x86_64" ]] && ARCH=amd64
+    [[ "$ARCH" == "ppc64le" ]] && ARCH=ppc64el
+    flags=(
+        "-DDEBIAN_VER_SUB={{ debian_ver }}"
+        "-DARCH_SUB=$ARCH"
+    )
+    TAG={{ debian_ver }}
+    [[ "{{ debian_ver }}" == "{{ stable }}" ]] && TAG="stable"
+    [[ "{{ debian_ver }}" == "{{ testing }}" ]] && TAG="testing"
+
+    {{ require('cpp') }} -E -traditional -P Containerfile.in ${flags[@]} > Containerfile
+    sudo podman build \
+        --env=DEBIAN_VER_SUB="{{ debian_ver }}" \
+        --env=ARCH_SUB="$ARCH" \
+        -t "{{ image_name }}:${TAG}" \
+        .
+    #rm Containerfile
 
 run-container $image_name=image_name:
     sudo podman run --rm -it "{{ image_name }}:{{ image_tag }}" bash

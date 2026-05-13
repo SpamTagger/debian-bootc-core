@@ -9,9 +9,21 @@ set -ouex pipefail
 echo "::group::Executing install-bootc"
 trap 'echo "::endgroup::"' EXIT
 
-DEV_DEPS="libcurl4-openssl-dev libzstd-dev libssl-dev pkg-config curl git build-essential meson \
-libfuse3-dev liblzma-dev libarchive-dev libsoup2.4-dev e2fslibs-dev libext2fs-dev libgpgme-dev go-md2man \
+
+if [[ "${DEBIAN_VER}" == "trixie" ]]; then
+  cat > /usr/lib/dracut/dracut.conf.d/20-tpm-luks.conf <<EOF
+add_dracutmodules+=" fido2 tpm2-tss pkcs11 systemd-pcrphase "
+EOF
+else
+  cat > /usr/lib/dracut/dracut.conf.d/20-tpm-luks.conf <<EOF
+add_dracutmodules+=" fido2 tpm2-tss pkcs11 systemd-pcrextend "
+EOF
+fi
+DEV_DEPS="libcurl4-openssl-dev libzstd-dev libssl-dev pkg-config build-essential meson \
+libfuse3-dev liblzma-dev libarchive-dev e2fslibs-dev libext2fs-dev libgpgme-dev go-md2man \
 autoconf automake libtool libseccomp-dev libcap-dev libglib2.0-dev bison flex equivs gobject-introspection"
+[[ "${DEBIAN_VER}" == "trixie" ]] && DEV_DEPS="${DEV_DEPS} libsoup2.4-dev" ||
+  DEV_DEPS="${DEV_DEPS} libostree-dev libostree-1-1 libsoup-3.0-dev rustc cargo"
 
 export CARGO_HOME=/tmp/rust
 export RUSTUP_HOME=/tmp/rust
@@ -22,23 +34,28 @@ rm -f /etc/apt/apt.conf.d/docker-gzip-indexes /etc/apt/apt.conf.d/docker-no-lang
 apt update -y
 
 # Install needed dependencies for building bootc/ostree
-apt install -y $DEV_DEPS ca-certificates libarchive13 --no-install-recommends
+apt install -y $DEV_DEPS ca-certificates curl git libarchive13t64 --no-install-recommends
 
 # Set up rust build environment
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile minimal -y
-. "${RUSTUP_HOME}/env"
+if [[ "${DEBIAN_VER}" == "trixie" ]]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile minimal -y
+  . "${RUSTUP_HOME}/env"
+fi
 
-# Build and install OSTree
-git clone https://github.com/ostreedev/ostree.git --depth 1 /tmp/ostree
-pushd /tmp/ostree
-git submodule update --init
-env NOCONFIGURE=1 ./autogen.sh
-./configure --prefix=/usr --libdir=/usr/lib --sysconfdir=/etc --with-curl --with-dracut
-make -j"$(nproc)"
-make install
-popd
-ln -svf /usr/lib/libostree* /lib/$(arch)-linux-gnu/ || true
-ldconfig
+# Compile latest OSTree for Trixie; later versions have a satisfactory minimum version
+if [[ "${DEBIAN_VER}" == "trixie" ]]; then
+  # Build and install OSTree
+  git clone https://github.com/ostreedev/ostree.git --depth 1 /tmp/ostree
+  pushd /tmp/ostree
+  git submodule update --init
+  env NOCONFIGURE=1 ./autogen.sh
+  ./configure --prefix=/usr --libdir=/usr/lib --sysconfdir=/etc --with-curl --with-dracut
+  make -j"$(nproc)"
+  make install
+  popd
+  ln -svf /usr/lib/libostree* /lib/$(arch)-linux-gnu/ || true
+  ldconfig
+fi
 
 # Build and install Bootc
 git clone https://github.com/bootc-dev/bootc.git --depth 1 /tmp/bootc
@@ -47,9 +64,10 @@ export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig
 make bin install-all
 popd
 
-# Build and install a dummy libostree-1-1 package for dependant packages
-mkdir -p /tmp/equivs
-cat > /tmp/equivs/libostree-fix <<EOF
+if [[ "${DEBIAN_VER}" == "trixie" ]]; then
+  # Build and install a dummy libostree-1-1 package for dependant packages
+  mkdir -p /tmp/equivs
+  cat > /tmp/equivs/libostree-fix <<EOF
 Section: misc
 Priority: optional
 Standards-Version: 3.9.2
@@ -61,12 +79,13 @@ Architecture: $(dpkg --print-architecture)
 Description: Dummy package to provide libostree-1-1
 EOF
 
-pushd /tmp/equivs
-equivs-build libostree-fix
-dpkg -i ./*.deb
-popd
+  pushd /tmp/equivs
+  equivs-build libostree-fix
+  dpkg -i ./*.deb
+  popd
 
-apt-mark hold libostree-1-1
+  apt-mark hold libostree-1-1
+fi
 
 # Remove no longer needed packages
 apt purge -y $DEV_DEPS

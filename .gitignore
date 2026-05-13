@@ -1,3 +1,4 @@
 .env
 cosign.key
 debian-bootc-core.img
+Containerfile

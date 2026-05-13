@@ -5,35 +5,7 @@ set -ouex pipefail
 apt update -y
 
 # Required packages
-apt install -y \
-  btrfs-progs \
-  ca-certificates \
-  curl \
-  dracut \
-  dosfstools \
-  e2fsprogs \
-  fdisk \
-  firmware-linux-free \
-  gdisk \
-  git \
-  git-lfs \
-  gpg \
-  iproute2 \
-  iputils-ping \
-  linux-image-generic \
-  network-manager \
-  parted \
-  rsync \
-  skopeo \
-  sudo \
-  tpm2-tools \
-  xfsprogs \
-  zstd \
-  cryptsetup \
-  libfido2-1 \
-  libfido2-dev \
-  libtss2-esys-3.0.2-0 \
-  libp11-kit0
+apt install -y $(cat /ctx/dependencies.${DEBIAN_VER} | tr '\n' ' ')
 
 # add frostyard's repo
 curl -fsSL https://repository.frostyard.org/public.key | gpg --dearmor -o /usr/share/keyrings/frostyard.gpg

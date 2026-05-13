@@ -1,14 +1,17 @@
-# Allow build scripts to be referenced without being copied into the final image
+/* Allow build scripts to be referenced without being copied into the final image */
 FROM scratch AS ctx
 COPY build_files /
 
-# Base Debian Image
-FROM docker.io/library/debian:stable
+/* Base Debian Image */
+FROM docker.io/library/debian:DEBIAN_VER_SUB-slim
 
 COPY system_files /
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG BUILD_ID=${BUILD_ID}
+ARG BUILD_ID=BUILD_ID_SUB
+ARG DEBIAN_VER=DEBIAN_VER_SUB
+ARG ARCH=ARCH_SUB
+ARG DEBIAN_FRONTEND=noninteractive
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
@@ -21,10 +24,6 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/build-initramfs && \
     /ctx/finalize
 
-# DEBUGGING
-# RUN apt update -y && apt install -y whois
-# RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
-
-# Lint
+/* Lint */
 RUN bootc container lint
 RUN nbc lint --local
