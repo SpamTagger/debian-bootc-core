@@ -13,8 +13,7 @@ selinux := path_exists('/sys/fs/selinux')
 default:
     just --list --unsorted
 
-alias build := build-container
-build-container $image_name=image_name:
+containerfile $image_name=image_name:
     #!/usr/bin/env bash
     ARCH=$(arch)
     [[ "$ARCH" == "aarch64" ]] && ARCH=arm64
@@ -30,12 +29,17 @@ build-container $image_name=image_name:
     [[ "{{ debian_ver }}" == "{{ testing }}" ]] && TAG="testing"
 
     {{ require('cpp') }} -E -traditional -P Containerfile.in ${flags[@]} > Containerfile
+
+alias build := build-container
+build-container $image_name=image_name:
+    just containerfile
+
     sudo podman build \
         --env=DEBIAN_VER_SUB="{{ debian_ver }}" \
         --env=ARCH_SUB="$ARCH" \
         -t "{{ image_name }}:${TAG}" \
         .
-    #rm Containerfile
+    rm Containerfile
 
 run-container $image_name=image_name:
     sudo podman run --rm -it "{{ image_name }}:{{ image_tag }}" bash
