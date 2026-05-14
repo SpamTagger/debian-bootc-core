@@ -24,19 +24,19 @@ containerfile $image_name=image_name:
         "-DDEBIAN_VER_SUB={{ debian_ver }}"
         "-DARCH_SUB=$ARCH"
     )
-    TAG={{ debian_ver }}
-    [[ "{{ debian_ver }}" == "{{ stable }}" ]] && TAG="stable"
-    [[ "{{ debian_ver }}" == "{{ testing }}" ]] && TAG="testing"
 
     {{ require('cpp') }} -E -traditional -P Containerfile.in ${flags[@]} > Containerfile
 
 alias build := build-container
 build-container $image_name=image_name:
+    #!/usr/bin/env bash
     just containerfile
 
+    TAG={{ debian_ver }}
+    [[ "{{ debian_ver }}" == "{{ stable }}" ]] && TAG="stable"
+    [[ "{{ debian_ver }}" == "{{ testing }}" ]] && TAG="testing"
     sudo podman build \
         --env=DEBIAN_VER_SUB="{{ debian_ver }}" \
-        --env=ARCH_SUB="$ARCH" \
         -t "{{ image_name }}:${TAG}" \
         .
     rm Containerfile
@@ -105,6 +105,37 @@ bootable-image-from-ghcr $base_dir=base_dir $filesystem=filesystem:
             --karg "debug" \
             --karg "systemd.log_level=debug" \
             --karg "systemd.journald.forward_to_console=1"
+
+# Login to GHCR
+[group('CI')]
+@login-to-ghcr:
+    sudo podman login ghcr.io -u "$GITHUB_ACTOR"  -p "$GITHUB_TOKEN"
+
+# Push Images to Registry
+[group('CI')]
+push-to-registry $destination="spamtagger/debian-bootc-core" $transport="docker://":
+    #!/usr/bin/bash
+
+    if [[ ! -z $COSIGN_PRIVATE_KEY ]]; then
+        echo "$COSIGN_PRIVATE_KEY" > /tmp/cosign.key
+    elif [[ -e cosign.key ]]; then
+        cp cosign.key /tmp/cosign.key
+    fi
+    echo "privateKeyFile: /tmp/cosign.key" > "/tmp/sigstore-params.yaml"
+    echo "privateKeyPassphraseFile: /dev/null" >> "/tmp/sigstore-params.yaml"
+
+    TAG={{ debian_ver }}
+    [[ "{{ debian_ver }}" == "{{ stable }}" ]] && TAG="stable"
+    [[ "{{ debian_ver }}" == "{{ testing }}" ]] && TAG="testing"
+
+    for i in {1..5}; do
+        sudo podman push --sign-by-sigstore=/tmp/sigstore-params.yaml localhost/debian-bootc-core:$TAG $transport$destination:$TAG && break || sleep $((5 * i));
+        if [[ $i -eq '5' ]]; then
+            exit 1
+        fi
+    done
+    cosign sign -y --key /tmp/cosign.key $destination:$TAG
+    {{ if env('COSIGN_PRIVATE_KEY', '') != '' { 'rm /tmp/cosign.key' } else { '' } }}
 
 launch-incus:
     #!/usr/bin/env bash
