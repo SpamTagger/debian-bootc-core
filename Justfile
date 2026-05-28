@@ -139,7 +139,7 @@ bootable-image-from-ghcr $base_dir=base_dir $filesystem=filesystem:
 # Login to GHCR
 [group('CI')]
 @login-to-ghcr:
-    sudo podman login ghcr.io -u "$GITHUB_ACTOR"  -p "$GITHUB_TOKEN"
+    sudo docker login ghcr.io -u "$GITHUB_ACTOR"  -p "$GITHUB_TOKEN"
 
 # Push Images to Registry
 [group('CI')]
@@ -165,7 +165,7 @@ push-to-registry $destination="ghcr.io/spamtagger/debian-bootc-core" $transport=
         fi
     done
     DIGEST=$(skopeo inspect $transport$destination:$TAG | jq -r .Digest)
-    cosign sign -y --key /tmp/cosign.key $destination@$DIGEST
+    REGISTRY_AUTH_FILE=$XDG_RUNTIME_DIR/containers/auth.json cosign sign -y --key /tmp/cosign.key $destination@$DIGEST
     {{ if env('COSIGN_PRIVATE_KEY', '') != '' { 'rm /tmp/cosign.key' } else { '' } }}
 
 launch-incus:
