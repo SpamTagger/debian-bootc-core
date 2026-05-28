@@ -142,7 +142,7 @@ bootable-image-from-ghcr $base_dir=base_dir $filesystem=filesystem:
 
 # Push Images to Registry
 [group('CI')]
-push-to-registry $destination="spamtagger/debian-bootc-core" $transport="docker://":
+push-to-registry $destination="ghcr.io/spamtagger/debian-bootc-core" $transport="docker://":
     #!/usr/bin/bash
 
     if [[ ! -z $COSIGN_PRIVATE_KEY ]]; then
