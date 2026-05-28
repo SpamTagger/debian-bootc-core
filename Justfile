@@ -139,7 +139,7 @@ bootable-image-from-ghcr $base_dir=base_dir $filesystem=filesystem:
 # Login to GHCR
 [group('CI')]
 @login-to-ghcr:
-    sudo docker login ghcr.io -u "$GITHUB_ACTOR"  -p "$GITHUB_TOKEN"
+    sudo podman login ghcr.io -u "$GITHUB_ACTOR"  -p "$GITHUB_TOKEN"
 
 # Push Images to Registry
 [group('CI')]
