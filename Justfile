@@ -32,9 +32,38 @@ build-container $image_name=image_name:
     #!/usr/bin/env bash
     just containerfile
 
+    DATE="$(date +%Y%m%d)"
     TAG={{ debian_ver }}
-    [[ "{{ debian_ver }}" == "{{ stable }}" ]] && TAG="stable"
-    [[ "{{ debian_ver }}" == "{{ testing }}" ]] && TAG="testing"
+    TAGS=()
+    TAGS+=("--tag" "localhost/$image_name:$TAG")
+    [[ "{{ debian_ver }}" == "{{ stable }}" ]] && TAG="stable" && TAGS+=("--tag" "localhost/$image_name:latest") && TAGS+=("--tag" "localhost/$image_name:stable")
+    [[ "{{ debian_ver }}" == "{{ testing }}" ]] && TAG="testing" && TAGS+=("--tag" "localhost/$image_name:testing")
+    SHA_SHORT="$(git rev-parse --short HEAD)"
+    TAGS+=("--tag" "localhost/$image_name:$SHA_SHORT")
+    TAGS+=("--tag" "localhost/$image_name:$DATE")
+
+    # OSTree Labels
+    IMAGE_VERSION="{{ debian_ver }}.$DATE"
+    LABELS=(
+        "--label" "containers.bootc=1"
+        "--label" "io.artifacthub.package.deprecated=false"
+        "--label" "io.artifacthub.package.keywords=bootc,debian"
+        "--label" "io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/205223896?s=200&v=4"
+        "--label" "io.artifacthub.package.maintainers=[{\"name\": \"JohnMertz\", \"email\": \"git@john.me.tz\"}]"
+        "--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/$image_registry/$image_org/$image_repo/main/README.md"
+        "--label" "org.opencontainers.image.created=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)"
+        "--label" "org.opencontainers.image.description=$image_description"
+        "--label" "org.opencontainers.image.license=GPLv3"
+        "--label" "org.opencontainers.image.source=https://raw.githubusercontent.com/$image_org/$image_repo/refs/heads/main/Containerfile.in"
+        "--label" "org.opencontainers.image.title={{ debian_ver }}"
+        "--label" "org.opencontainers.image.url=https://github.com/$image_org/$image_repo"
+        "--label" "org.opencontainers.image.vendor=$image_org"
+        "--label" "org.opencontainers.image.version=${IMAGE_VERSION}"
+        "--label" "org.opencontainers.image.description=Debian Bootc compatible base image"
+        "--label" "io.artifacthub.package.deprecated=false"
+        "--label" "io.artifacthub.package.prerelease=true"
+    )
+
     sudo podman build \
         --env=DEBIAN_VER_SUB="{{ debian_ver }}" \
         -t "{{ image_name }}:${TAG}" \
