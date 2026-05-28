@@ -65,6 +65,7 @@ build-container $image_name=image_name:
     )
 
     sudo podman build \
+        --format oci \
         --env=DEBIAN_VER_SUB="{{ debian_ver }}" \
         -t "{{ image_name }}:${TAG}" \
         .
@@ -158,7 +159,7 @@ push-to-registry $destination="ghcr.io/spamtagger/debian-bootc-core" $transport=
     [[ "{{ debian_ver }}" == "{{ testing }}" ]] && TAG="testing"
 
     for i in {1..5}; do
-        sudo podman push --sign-by-sigstore=/tmp/sigstore-params.yaml localhost/debian-bootc-core:$TAG $transport$destination:$TAG && break || sleep $((5 * i));
+        sudo podman push localhost/debian-bootc-core:$TAG $transport$destination:$TAG && break || sleep $((5 * i));
         if [[ $i -eq '5' ]]; then
             exit 1
         fi
