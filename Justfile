@@ -164,7 +164,8 @@ push-to-registry $destination="ghcr.io/spamtagger/debian-bootc-core" $transport=
             exit 1
         fi
     done
-    cosign sign -y --key /tmp/cosign.key $destination:$TAG
+    DIGEST=$(skopeo inspect $transport$destination:$TAG | jq -r .Digest)
+    cosign sign -y --key /tmp/cosign.key $destination@$DIGEST
     {{ if env('COSIGN_PRIVATE_KEY', '') != '' { 'rm /tmp/cosign.key' } else { '' } }}
 
 launch-incus:

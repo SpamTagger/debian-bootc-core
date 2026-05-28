@@ -88,6 +88,6 @@ jobs:
         continue-on-error: true
         uses: peter-evans/repository-dispatch@v4
         with:
-          token: ${{ secrets.PAT }}
+          token: ${{ secrets.RELEASE_TOKEN }}
           repository: SpamTagger/Spamtagger-Bootc
           event-type: build
