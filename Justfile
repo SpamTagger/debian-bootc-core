@@ -165,7 +165,7 @@ push-to-registry $destination="ghcr.io/spamtagger/debian-bootc-core" $transport=
         fi
     done
     DIGEST=$(skopeo inspect $transport$destination:$TAG | jq -r .Digest)
-    COSIGN_EXPERIMENTAL=1 COSIGN_LOG_LEVEL=debug REGISTRY_AUTH_FILE=/run/containers/0/auth.json sudo cosign sign -y --key /tmp/cosign.key $destination@$DIGEST
+    COSIGN_EXPERIMENTAL=1 COSIGN_LOG_LEVEL=debug REGISTRY_AUTH_FILE=/run/containers/0/auth.json sudo cosign sign -y --key /tmp/cosign.key --registry-username $GITHUB_ACTOR --registry-password $GHCR_TOKEN $destination@$DIGEST
     {{ if env('COSIGN_PRIVATE_KEY', '') != '' { 'rm /tmp/cosign.key' } else { '' } }}
 
 launch-incus:
