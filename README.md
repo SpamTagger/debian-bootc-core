@@ -1,5 +1,7 @@
 # <img src="https://raw.githubusercontent.com/SpamTagger/debian-bootc-core/refs/heads/main/debian-bootc-core.svg" alt="debian-bootc-core Logo" style="height:2em; vertical-align:middle;">debian-bootc-core
 
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/debian-bootc-core)](https://artifacthub.io/packages/search?repo=debian-bootc-core)
+
 ## 🐧 What is debian-bootc-core 🐧
 
 This project builds a BootC-compatible OCI container image from the latest official `<version>-slim` Debian image, then installs and configures the minimum necessary to get BootC on top.
