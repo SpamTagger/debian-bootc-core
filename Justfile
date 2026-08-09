@@ -52,27 +52,42 @@ gen-tags $image_name=image_name:
     DEBIAN_VER="{{ debian_ver }}"
     SHA_SHORT="$(git rev-parse --short HEAD)"
     DATE="$(date +%Y%m%d)"
-    TAG=${DEBIAN_VER}
+
+    LIST_TAGS="$(mktemp)"
+    while [[ ! -s "$LIST_TAGS" ]]; do
+       skopeo list-tags docker://ghcr.io/spamtagger/debian-bootc-core > "$LIST_TAGS"
+    done
+    if [[ $(cat "$LIST_TAGS" | jq "any(.Tags[]; contains(\"$DEBIAN_VER-$DATE\"))") == "true" ]]; then
+       POINT="1"
+       while $(cat "$LIST_TAGS" | jq -e "any(.Tags[]; contains(\"$DEBIAN_VER-$DATE.$POINT\"))")
+       do
+           (( POINT++ ))
+       done
+    fi
+    if [[ -n "${POINT:-}" ]]; then
+        DATE="$DATE.$POINT"
+    fi
+
     TAGS=()
-    TAGS+=("${TAG}")
-    TAGS+=("${TAG}-$SHA_SHORT")
-    TAGS+=("${TAG}-$DATE")
-    if [[ "$TAG" == "stable" ]]; then
+    TAGS+=("${DEBIAN_VER}")
+    TAGS+=("${DEBIAN_VER}-$SHA_SHORT")
+    TAGS+=("${DEBIAN_VER}-$DATE")
+    if [[ "$DEBIAN_VER" == "stable" ]]; then
         TAGS+=("{{ stable }}")
         TAGS+=("{{ stable }}-$SHA_SHORT")
         TAGS+=("{{ stable }}-$DATE")
     fi
-    if [[ "$TAG" == "{{ stable }}" ]]; then
+    if [[ "$DEBIAN_VER" == "{{ stable }}" ]]; then
         TAGS+=("stable")
         TAGS+=("stable-$SHA_SHORT")
         TAGS+=("stable-$DATE")
     fi
-    if [[ "$TAG" == "testing" ]]; then
+    if [[ "$DEBIAN_VER" == "testing" ]]; then
         TAGS+=("{{ testing }}")
         TAGS+=("{{ testing }}-$SHA_SHORT")
         TAGS+=("{{ testing }}-$DATE")
     fi
-    if [[ "$TAG" == "{{ testing }}" ]]; then
+    if [[ "$DEBIAN_VER" == "{{ testing }}" ]]; then
         TAGS+=("testing")
         TAGS+=("testing-$SHA_SHORT")
         TAGS+=("testing-$DATE")
@@ -206,11 +221,6 @@ push-to-registry $destination="ghcr.io/spamtagger/debian-bootc-core" $transport=
         done
     done
     DIGEST=$(skopeo inspect $transport$destination:{{ debian_ver }} | jq -r .Digest)
-
-    echo "Destination: [$destination]"
-    echo "Digest:      [$DIGEST]"
-    echo "Reference:   [$destination@$DIGEST]"
-    echo "GHCR User:   [$GITHUB_ACTOR]"
 
     sudo --preserve-env=COSIGN_PRIVATE_KEY,COSIGN_PASSWORD,GITHUB_ACTOR,GHCR_TOKEN \
         cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
