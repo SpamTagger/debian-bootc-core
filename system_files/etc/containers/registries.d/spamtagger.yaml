@@ -1,0 +1,3 @@
+docker:
+  ghcr.io/spamtagger:
+    use-sigstore-attachments: true

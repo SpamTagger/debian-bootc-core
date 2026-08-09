@@ -5,41 +5,7 @@ set -ouex pipefail
 apt update -y
 
 # Required packages
-apt install -y \
-  btrfs-progs \
-  ca-certificates \
-  curl \
-  dracut \
-  dosfstools \
-  e2fsprogs \
-  fdisk \
-  firmware-linux-free \
-  gdisk \
-  git \
-  git-lfs \
-  gpg \
-  iproute2 \
-  iputils-ping \
-  linux-image-generic \
-  network-manager \
-  parted \
-  rsync \
-  skopeo \
-  sudo \
-  tpm2-tools \
-  xfsprogs \
-  zstd \
-  cryptsetup \
-  libfido2-1 \
-  libfido2-dev \
-  libtss2-esys-3.0.2-0 \
-  libp11-kit0
-
-# add frostyard's repo
-curl -fsSL https://repository.frostyard.org/public.key | gpg --dearmor -o /usr/share/keyrings/frostyard.gpg
-echo "deb [signed-by=/usr/share/keyrings/frostyard.gpg] https://repository.frostyard.org/ stable main" > /etc/apt/sources.list.d/frostyard.list
-apt update -y
-apt install -y frostyard-nbc frostyard-updex
+apt install -y $(cat /ctx/$DEBIAN_VER/dependencies | tr '\n' ' ')
 
 # Use proper home directory for new users
 sed -i 's|.*HOME=/home|HOME=/var/home|' "/etc/default/useradd"
@@ -55,9 +21,6 @@ systemctl enable usr-local.mount
 
 # Fix permissions on sudoers.d
 chmod 440 /etc/sudoers.d/001-bootc
-
-# Add build information to os-release
-echo "BUILD_ID=\"$BUILD_ID\"" >> /usr/lib/os-release
 
 # remove bls-garbage-collect from /etc/systemd/system/basic.garget.wants
 rm -rf /etc/systemd/system/basic.target.wants/bls-garbage-collect.service

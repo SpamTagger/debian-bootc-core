@@ -10,8 +10,8 @@ rm -f /etc/apt/apt.conf.d/docker-gzip-indexes /etc/apt/apt.conf.d/docker-no-lang
 rm -f /var/log/apt/eipp.log.xz
 apt update -y
 
+PKGS="grub-efi-amd64-signed- systemd systemd-boot"
+[[ "${DEBIAN_VER}" == "forky" ]] && PKGS="${PKGS} systemd-ukify"
+
 # Install systemd-boot, remove grub
-apt install -y --allow-remove-essential \
-      systemd \
-      systemd-boot \
-      grub-efi-amd64-signed-
+apt install -y --allow-remove-essential $PKGS
