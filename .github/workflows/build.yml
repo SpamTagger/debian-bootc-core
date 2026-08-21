@@ -1,20 +1,25 @@
 ---
 name: Build container image
 run-name: Build debian-bootc-core by @${{ github.actor }}
+
 on:
   repository_dispatch:
     types:
       - build
+
   pull_request:
     branches:
       - main
+
   schedule:
     - cron: "06 00 * * 6" # 0600 UTC Saturday
+
   push:
     branches:
       - main
     paths-ignore:
       - "**/README.md"
+
   workflow_dispatch:
 
 env:
@@ -29,35 +34,74 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
+  # Pre-Build, single threaded
+  prepare:
+    name: Prepare build metadata
+    runs-on: ubuntu-24.04
+
+    outputs:
+      datestamp: ${{ steps.metadata.outputs.datestamp }}
+
+    container:
+      image: "ghcr.io/ublue-os/devcontainer:latest"
+      options: >
+        --privileged
+        --volume /var/lib/containers:/var/lib/containers
+        --security-opt seccomp=unconfined
+        --security-opt label=disable
+        --user 0:0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v5
+
+      - name: Generate build metadata
+        id: metadata
+        shell: bash
+        run: |
+          echo "datestamp=$(just gen-date)" >> "$GITHUB_OUTPUT"
+
+  # Build, threaded for different versions
   build_push:
-    name: Build and push ${{ matrix.version }} image
-    continue-on-error: false
+    name: Build and push ${{ matrix.version }}/${{ matrix.arch }} image
+
+    needs:
+      - prepare
+
+    env:
+      DATESTAMP: ${{ needs.prepare.outputs.datestamp }}
+
     permissions:
       contents: read
       packages: write
-      id-token: write
+
     runs-on: ubuntu-24.04
+
     strategy:
       fail-fast: false
+
       matrix:
         include:
-          - version: trixie
-          - version: forky
+          - version: stable
+            arch: amd64
+          - version: stable
+            arch: arm64
+          - version: testing
+            arch: amd64
+          - version: testing
+            arch: arm64
+
     container:
       image: "ghcr.io/ublue-os/devcontainer:latest"
-      options: "--privileged --volume /var/lib/containers:/var/lib/containers --security-opt seccomp=unconfined --security-opt label=disable --user 0:0"
+      options: >
+        --privileged
+        --volume /var/lib/containers:/var/lib/containers
+        --security-opt seccomp=unconfined
+        --security-opt label=disable
+        --user 0:0
 
     steps:
-      - name: Prepare environment
-        run: |
-          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
-          echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
-          TAG=${{ matrix.version }}
-          echo "DEBIAN_VER=$TAG" >> ${GITHUB_ENV}
-          [[ "$TAG" == "trixie" ]] && TAG=stable
-          [[ "$TAG" == "forky" ]] && TAG=testing
-          echo "TAG=$TAG" >> ${GITHUB_ENV}
-
       # These stage versions are pinned by https://github.com/renovatebot/renovate
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v5
@@ -66,6 +110,10 @@ jobs:
 
       - name: Mark Directory as Safe
         run: git config --system --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Enable architecture emulation
+        run: |
+          podman run --privileged --rm docker.io/tonistiigi/binfmt --install "${{ matrix.arch }}"
 
       - name: Build Image
         run: just build
@@ -81,10 +129,107 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
-      - name: Push and Sign Image
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+      - name: Push ${{ matrix.version }}/${{ matrix.arch }} image
+        if: >-
+          github.event_name != 'pull_request' &&
+          github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         run: |
           just push-to-registry
+        env:
+          DATESTAMP: ${{ needs.prepare.outputs.datestamp }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+
+  # Post-build actions, single thread
+  manifests:
+    name: Create multiarch manifests
+
+    needs:
+      - prepare
+      - build_push
+
+    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+
+    env:
+      DATESTAMP: ${{ needs.prepare.outputs.datestamp }}
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    runs-on: ubuntu-24.04
+
+    container:
+      image: "ghcr.io/ublue-os/devcontainer:latest"
+      options: >
+        --privileged
+        --volume /var/lib/containers:/var/lib/containers
+        --security-opt seccomp=unconfined
+        --security-opt label=disable
+        --user 0:0
+
+    steps:
+      - name: Build and Push Manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="${IMAGE_REGISTRY}/${IMAGE_NAME}"
+
+          for VERSION in stable testing; do
+
+            echo "Generating tags for ${VERSION}"
+
+            while IFS= read -r TAG; do
+              echo "Creating manifest ${IMAGE}:${TAG}"
+
+              podman manifest rm "${IMAGE}:${TAG}" 2>/dev/null || true
+
+              podman manifest create "${IMAGE}:${TAG}"
+
+              for ARCH in amd64 arm64; do
+                podman manifest add \
+                  "${IMAGE}:${TAG}" \
+                  "docker://${IMAGE}:${TAG}-${ARCH}"
+              done
+
+              podman manifest push \
+                --all \
+                "${IMAGE}:${TAG}" \
+                "docker://${IMAGE}:${TAG}"
+            done < <(
+              BUILD_ARCH="" just gen-tags
+            )
+          done
+
+      - name: Sign manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="${IMAGE_REGISTRY}/${IMAGE_NAME}"
+
+          for VERSION in stable testing; do
+
+            while IFS= read -r TAG; do
+              DIGEST=$(
+                skopeo inspect \
+                  "docker://${IMAGE}:${TAG}" \
+                  | jq -r '.Digest'
+              )
+
+              cosign sign \
+                --yes \
+                --key env://COSIGN_PRIVATE_KEY \
+                --registry-username "$GITHUB_ACTOR" \
+                --registry-password "$GHCR_TOKEN" \
+                "${IMAGE}@${DIGEST}"
+            done < <(
+              DEBIAN_VER="$VERSION" \
+              just gen-tags
+            )
+          done
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.RELEASE_TOKEN }}
