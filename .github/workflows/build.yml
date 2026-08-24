@@ -27,7 +27,7 @@ env:
   IMAGE_KEYWORDS: "bootc,debian"
   IMAGE_LOGO_URL: "https://raw.githubusercontent.com/SpamTagger/SpamTagger-Bootc/refs/heads/main/spamtagger-bootc.svg" # Put your own image here for a fancy profile on https://artifacthub.io/!
   IMAGE_NAME: "${{ github.event.repository.name }}" # output image name, usually same as repo name
-  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}" # do not edit
+  IMAGE_REGISTRY: "ghcr.io/spamtagger" # do not edit
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
@@ -118,6 +118,8 @@ jobs:
       - name: Build Image
         run: just build
         env:
+          BUILD_ARCH: ${{ matrix.arch }}
+          DEBIAN_VER: ${{ matrix.version }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
 
@@ -136,7 +138,8 @@ jobs:
         run: |
           just push-to-registry
         env:
-          DATESTAMP: ${{ needs.prepare.outputs.datestamp }}
+          BUILD_ARCH: ${{ matrix.arch }}
+          DEBIAN_VER: ${{ matrix.version }}
           GITHUB_ACTOR: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
@@ -170,6 +173,12 @@ jobs:
         --user 0:0
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v5
+
+      - name: Mark Directory as Safe
+        run: git config --system --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Build and Push Manifests
         shell: bash
         run: |
