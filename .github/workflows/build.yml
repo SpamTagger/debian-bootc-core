@@ -208,7 +208,7 @@ jobs:
                 "${IMAGE}:${TAG}" \
                 "docker://${IMAGE}:${TAG}"
             done < <(
-              BUILD_ARCH="" just gen-tags
+              just gen-tags
             )
           done
 

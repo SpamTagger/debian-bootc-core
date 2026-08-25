@@ -94,41 +94,29 @@ gen-tags:
 
     DEBIAN_VER="{{ debian_ver }}"
 
-    SHA_SHORT="$(git rev-parse --short HEAD)"
     DATESTAMP="{{ datestamp }}"
     if [[ -z $DATESTAMP ]]; then
         DATESTAMP=$(just gen-date)
     fi
 
     VER_NUM={{ stable_num }}
+    [[ "$DEBIAN_VER" == "{{ stable_num }}" ]] && DEBIAN_VER="{{ stable }}"
+    [[ "$DEBIAN_VER" == "{{ testing_num }}" ]] && DEBIAN_VER="{{ testing }}"
     [[ "$DEBIAN_VER" == "stable" ]] && DEBIAN_VER={{ stable }}
-    [[ "$DEBIAN_VER" == "testing" ]] && DEBIAN_VER={{ testing }} && VER_NUM={{ testing_num }}
+    [[ "$DEBIAN_VER" == "testing" ]] && DEBIAN_VER={{ testing }}
+    [[ "$DEBIAN_VER" == "{{ testing }}" ]] && VER_NUM={{ testing_num }}
 
     TAGS=()
     TAGS+=("${DEBIAN_VER}${SUFFIX}")
-    TAGS+=("${DEBIAN_VER}-${SHA_SHORT}${SUFFIX}")
     TAGS+=("${DEBIAN_VER}.${DATESTAMP}${SUFFIX}")
     TAGS+=("${VER_NUM}${SUFFIX}")
-    TAGS+=("${VER_NUM}-${SHA_SHORT}${SUFFIX}")
     TAGS+=("${VER_NUM}.${DATESTAMP}${SUFFIX}")
-    if [[ "$DEBIAN_VER" == "stable" ]]; then
-        TAGS+=("{{ stable }}${SUFFIX}")
-        TAGS+=("{{ stable }}-${SHA_SHORT}${SUFFIX}")
-        TAGS+=("{{ stable }}.${DATESTAMP}${SUFFIX}")
-    fi
     if [[ "$DEBIAN_VER" == "{{ stable }}" ]]; then
         TAGS+=("stable${SUFFIX}")
-        TAGS+=("stable-${SHA_SHORT}${SUFFIX}")
         TAGS+=("stable.${DATESTAMP}${SUFFIX}")
-    fi
-    if [[ "$DEBIAN_VER" == "testing" ]]; then
-        TAGS+=("{{ testing }}${SUFFIX}")
-        TAGS+=("{{ testing }}-${SHA_SHORT}${SUFFIX}")
-        TAGS+=("{{ testing }}.${DATESTAMP}${SUFFIX}")
     fi
     if [[ "$DEBIAN_VER" == "{{ testing }}" ]]; then
         TAGS+=("testing${SUFFIX}")
-        TAGS+=("testing-${SHA_SHORT}${SUFFIX}")
         TAGS+=("testing.${DATESTAMP}${SUFFIX}")
     fi
     printf '%s\n' "${TAGS[@]}"
@@ -141,8 +129,11 @@ build-container $image_name=image_name:
     # OSTree Labels
     VER_NUM={{ stable_num }}
     DEBIAN_VER={{ debian_ver }}
+    [[ "$DEBIAN_VER" == "{{ stable_num }}" ]] && DEBIAN_VER="{{ stable }}"
+    [[ "$DEBIAN_VER" == "{{ testing_num }}" ]] && DEBIAN_VER="{{ testing }}"
     [[ "$DEBIAN_VER" == "stable" ]] && DEBIAN_VER={{ stable }}
-    [[ "$DEBIAN_VER" == "testing" ]] && DEBIAN_VER={{ testing }} && VER_NUM={{ testing_num }}
+    [[ "$DEBIAN_VER" == "testing" ]] && DEBIAN_VER={{ testing }}
+    [[ "$DEBIAN_VER" == "{{ testing }}" ]] && VER_NUM={{ testing_num }}
 
     # Transform Kernel arch to Debian arch names
     ARCH="{{ build_arch }}"
