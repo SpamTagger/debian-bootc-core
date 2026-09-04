@@ -216,6 +216,8 @@ jobs:
                 "${IMAGE}:${TAG}" \
                 "docker://${IMAGE}:${TAG}"
             done < <(
+              DEBIAN_VER="${VERSION}" \
+              DATESTAMP="${DATESTAMP}" \
               just gen-tags
             )
           done
@@ -243,7 +245,8 @@ jobs:
                 --registry-password "$GHCR_TOKEN" \
                 "${IMAGE}@${DIGEST}"
             done < <(
-              DEBIAN_VER="$VERSION" \
+              DEBIAN_VER="${VERSION}" \
+              DATESTAMP="${DATESTAMP}" \
               just gen-tags
             )
           done
