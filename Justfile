@@ -268,7 +268,7 @@ push-to-registry $destination="ghcr.io/spamtagger/debian-bootc-core" $transport=
                 exit 1
             fi
         done
-    done < <(just gen-tags $image_name)
+    done < <(just gen-tags)
 
 launch-incus:
     #!/usr/bin/env bash
